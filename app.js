@@ -562,4 +562,18 @@ function attachSearch(){
   });
 }
 
-window.addEventListener('load', ()=>{ renderShell(); initNav(); renderDashboard(); initTopbar(); attachSearch(); });
+function bootstrap() {
+  try {
+    renderShell();
+    initNav();
+    renderDashboard();
+    initTopbar();
+    attachSearch();
+  } catch (e) {
+    console.error('Init error', e);
+    const main = document.getElementById('main');
+    if (main) main.innerHTML = `<div class="card">Ошибка инициализации: ${e.message}</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', bootstrap);

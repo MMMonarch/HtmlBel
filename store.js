@@ -1,5 +1,10 @@
 const STATE_KEY = 'hrms-by-state';
 
+// Polyfill structuredClone for older browsers
+if (typeof structuredClone !== 'function') {
+  window.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STATE_KEY);
@@ -20,7 +25,11 @@ function loadState() {
 }
 
 function saveState(state) {
-  localStorage.setItem(STATE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Cannot save state', e);
+  }
 }
 
 function resetToSeed() {
