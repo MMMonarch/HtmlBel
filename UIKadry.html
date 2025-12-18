@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>HRMS UI – Автоматизированный юридический контролер (РБ)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --primary: #0f3d61;
+      --accent: #2f74c0;
+      --border: #d7dde7;
+      --text: #1a1a1a;
+      --muted: #6b7280;
+      --risk-high: #a40000;
+      --risk-medium: #9a6700;
+      --risk-low: #1b7c3a;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:"Segoe UI", Arial, sans-serif; background:var(--bg); color:var(--text); }
+    header { background: var(--primary); color:#fff; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+    header .title { font-size:18px; font-weight:600; }
+    header .actions button { margin-left:10px; padding:8px 12px; border:1px solid rgba(255,255,255,0.4); background:rgba(255,255,255,0.12); color:#fff; border-radius:6px; cursor:pointer; }
+    main { display:flex; min-height: calc(100vh - 56px); }
+    nav { width:240px; background:#0d3250; color:#c7d5e8; padding:16px 14px; position:sticky; top:56px; height: calc(100vh - 56px); overflow:auto; }
+    nav h3 { color:#fff; font-size:14px; margin:10px 0; }
+    nav a { display:block; color:#c7d5e8; text-decoration:none; padding:8px 10px; border-radius:6px; margin-bottom:6px; font-size:14px; }
+    nav a.active, nav a:hover { background:rgba(255,255,255,0.12); color:#fff; }
+    .content { flex:1; padding:20px; }
+    .section { margin-bottom:28px; background:var(--card); padding:18px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 12px rgba(0,0,0,0.03); }
+    h2 { margin-top:0; color:var(--primary); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; }
+    .tag { display:inline-block; padding:2px 8px; margin:2px; border-radius:12px; background:#e8f1ff; color:var(--primary); font-size:12px; }
+    table { width:100%; border-collapse: collapse; margin-top:10px; }
+    th, td { border:1px solid var(--border); padding:8px 10px; text-align:left; font-size:14px; }
+    th { background:#eef3f9; }
+    .pill { padding:4px 8px; border-radius:10px; font-size:12px; }
+    .pill.high { background:#fde8e8; color:var(--risk-high); }
+    .pill.medium { background:#fff4dc; color:var(--risk-medium); }
+    .pill.low { background:#e6f4ec; color:var(--risk-low); }
+    .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
+    .toolbar input, .toolbar select { padding:8px 10px; border-radius:8px; border:1px solid var(--border); }
+    .btn { padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--accent); color:#fff; cursor:pointer; }
+    .btn.secondary { background:#fff; color:var(--primary); }
+    .table-scroll { overflow:auto; max-height:360px; }
+    details { border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:#fafbff; margin-top:10px; }
+    details summary { cursor:pointer; font-weight:600; }
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center; z-index:200; }
+    .modal { background:#fff; padding:20px; border-radius:12px; width:640px; max-width:90%; max-height:80vh; overflow:auto; box-shadow:0 12px 30px rgba(0,0,0,0.25); }
+    .modal h3 { margin-top:0; }
+    .chip { display:inline-block; padding:6px 10px; border-radius:14px; background:#eef3f9; margin:2px; font-size:12px; }
+    .section-title { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
+    .status-ok { background:#2e8b57; }
+    .status-risk { background:#c2410c; }
+    .status-block { background:#b91c1c; }
+    @media (max-width: 980px) { nav { display:none; position:static; height:auto; width:auto; } header { flex-wrap:wrap; } main { flex-direction:column; } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="title">HRMS РБ – автоматизированный юридический контролер (.NET MAUI Blazor Hybrid + PostgreSQL + n8n)</div>
+  <div class="actions">
+    <button onclick="openModal('quickChecklist')">Чек-лист комплаенса</button>
+    <button onclick="openModal('createOrder')">Создать приказ</button>
+  </div>
+</header>
+<main>
+  <nav id="side-nav"></nav>
+  <div class="content" id="content">
+
+    <section class="section" id="dashboard">
+      <div class="section-title"><h2>Дашборд комплаенса</h2><span class="muted">Демо интерфейс без бэкенда</span></div>
+      <div class="grid">
+        <div class="card">
+          <strong>Активные контракты &lt; 60 дней</strong>
+          <p id="contracts-expiring">—</p>
+          <div class="chip">workflow n8n: уведомление + проект письма</div>
+        </div>
+        <div class="card">
+          <strong>Просроченные уведомления ВУР</strong>
+          <p id="vur-overdue">—</p>
+          <div class="chip">SLA 5 дней, эскалация</div>
+        </div>
+        <div class="card">
+          <strong>Конфликты табеля/приказов</strong>
+          <p id="timesheet-conflicts">—</p>
+          <div class="chip">EXCLUDE + серверные валидации</div>
+        </div>
+        <div class="card">
+          <strong>Состояние локализации данных</strong>
+          <p><span class="status-dot status-ok"></span>В пределах РБ (DC Минск)</p>
+          <div class="chip">Отчет о размещении ресурсов</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="context">
+      <h2>ЭТАП 0. Контекст и допущения</h2>
+      <p>Коммерческая организация РБ, 200–1000 сотрудников, 2–10 филиалов, кадровый отдел 3–15 человек, часть работников на сменном и суммированном учете. Вся инфраструктура и ПДн размещены в РБ.</p>
+      <div class="grid">
+        <div class="card">
+          <strong>В объеме</strong>
+          <ul>
+            <li>Кадровое делопроизводство, КЭДО/ЭЦП (Avest, ГосСУОК)</li>
+            <li>Штатка, табель, ПУ-1/2/3, воинский учет</li>
+            <li>Интеграции: СКУД Perco/Bolid, бухгалтерия/1С</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Не в объеме</strong>
+          <ul>
+            <li>Расчет зарплаты (отдельная система), но API/файловый обмен</li>
+            <li>ATS/рекрутинг — опционально</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Принципы обработки ПДн</strong>
+          <ul>
+            <li>Минимизация, целевое назначение</li>
+            <li>Локализация в РБ, роль/контекст, RLS</li>
+            <li>Журналирование чтения/изменения</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="matrix">
+      <div class="section-title"><h2>ЭТАП 1. Нормативная матрица</h2>
+        <div class="toolbar">
+          <input type="search" id="matrix-search" placeholder="Фильтр требований">
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table id="matrix-table">
+          <thead><tr><th>Требование</th><th>Риск нарушения</th><th>Техконтроль</th><th>Артефакт</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="architecture">
+      <h2>ЭТАП 2. Архитектура и интеграции</h2>
+      <div class="grid">
+        <div class="card">
+          <strong>Развертывание</strong>
+          <ul>
+            <li>On-prem / белорусский провайдер, только РБ</li>
+            <li>Сегменты: клиенты MAUI, API, PostgreSQL, n8n, доки, криптопровайдер</li>
+            <li>TLS, внутренний CA, VPN/MTLS, DMZ</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Логическая цепочка</strong>
+          <p>UI → API Gateway → сервисы (Кадры/Штатка/Табель/ФСЗН/ВУР/Справочники/Безопасность) → Домен (CQRS+валидации) → PostgreSQL (RLS+temporal) → Документохранилище → Интеграции → n8n.</p>
+        </div>
+        <div class="card">
+          <strong>Интеграции</strong>
+          <ul>
+            <li>Outbox → n8n, идемпотентность, ретраи</li>
+            <li>СКУД: событие order.signed → активация пропуска</li>
+            <li>ФСЗН: текстовые выгрузки + подготовка API (HTTPS + Avest подпись)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="data-model">
+      <h2>ЭТАП 3. Модель данных PostgreSQL</h2>
+      <div class="grid">
+        <div class="card">
+          <strong>Ключевые таблицы</strong>
+          <p class="muted">employees, employments, positions, org_units, contracts, orders, timesheets, absences, military_records, fszn_exports, consent_records, audit_trails, roles, permissions</p>
+          <div class="chip">valid_from/valid_to</div><div class="chip">terms_jsonb</div><div class="chip">EXCLUDE overlaps</div>
+        </div>
+        <div class="card">
+          <strong>RLS и целостность</strong>
+          <ul>
+            <li>Политики по филиалу/подразделению</li>
+            <li>FK: employment → position (запрет приема в никуда)</li>
+            <li>EXCLUDE: отпуск/больничный/командировка без пересечений</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Право на забвение</strong>
+          <ul>
+            <li>Анонимизация ПДн при отзыве согласия</li>
+            <li>Сохранение агрегатов аналитики</li>
+            <li>Логи анонимизации + акт</li>
+          </ul>
+        </div>
+      </div>
+      <details>
+        <summary>Перечень ограничений и аудита</summary>
+        <ul>
+          <li>Audit trigger на чтение/изменение ПДн с reason code</li>
+          <li>Уникальность табеля на период+подразделение</li>
+          <li>История окладов/условий в terms_jsonb с версиями</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="section" id="security">
+      <h2>ЭТАП 4. Безопасность и криптография</h2>
+      <div class="grid">
+        <div class="card">
+          <strong>Аутентификация</strong>
+          <ul>
+            <li>Кадровики: ЭЦП (Avest CSP, ID-карта/USB-токен)</li>
+            <li>Сотрудники: упрощённый вход + усиление для ПДн (OTP/ЭЦП)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Подписание</strong>
+          <ul>
+            <li>Договоры, приказы, ПУ-выгрузки, личные карточки</li>
+            <li>Хэш + подпись, проверка при открытии</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>Защита</strong>
+          <ul>
+            <li>Шифрование дисков/бэкапов, Vault для секретов</li>
+            <li>Ротация ключей, контроль восстановления</li>
+            <li>RBAC: кадровик, руководитель, ВУР, бухгалтерия (агрегаты), админ, аудитор</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="modules">
+      <h2>ЭТАП 5. Модули с юридическими контролями</h2>
+      <div class="toolbar">
+        <select id="module-select"></select>
+        <button class="btn secondary" onclick="openModal('moduleTests')">Тест-кейсы</button>
+      </div>
+      <div id="module-detail"></div>
+    </section>
+
+    <section class="section" id="workflows">
+      <h2>ЭТАП 6. Каталог workflow n8n</h2>
+      <div class="table-scroll">
+        <table id="workflow-table">
+          <thead><tr><th>Workflow</th><th>Триггер</th><th>Действия</th><th>Артефакты</th><th>Ретраи/безопасность</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="risks">
+      <div class="section-title"><h2>ЭТАП 7. Риски и митигации</h2>
+        <div class="toolbar">
+          <select id="risk-filter">
+            <option value="all">Все</option>
+            <option value="high">Высокий</option>
+            <option value="medium">Средний</option>
+            <option value="low">Низкий</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table id="risk-table">
+          <thead><tr><th>Риск</th><th>Вероятность/ущерб</th><th>Детект</th><th>Митигация</th><th>Владелец</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="report">
+      <h2>ЭТАП 8. Формат финального отчета</h2>
+      <ol>
+        <li>Executive summary</li>
+        <li>Нормативная матрица соответствия</li>
+        <li>Архитектура и размещение (локализация РБ)</li>
+        <li>Модель данных PostgreSQL (RLS, temporal, constraints)</li>
+        <li>КЭДО/ЭЦП и криптография</li>
+        <li>Модульный анализ (Штатка, Кадры, ФСЗН, ВУР, Табель)</li>
+        <li>Каталог workflow n8n</li>
+        <li>Риски и внедрение</li>
+        <li>Приложения: словарь данных, логи/аудиты, тест-кейсы, чек-лист</li>
+      </ol>
+    </section>
+
+  </div>
+</main>
+
+<div class="modal-backdrop" id="modal-backdrop" onclick="closeModal(event)">
+  <div class="modal" id="modal-body"></div>
+</div>
+
+<script>
+  const navItems = [
+    { id: 'dashboard', label: 'Дашборд' },
+    { id: 'context', label: 'Контекст' },
+    { id: 'matrix', label: 'Нормативная матрица' },
+    { id: 'architecture', label: 'Архитектура' },
+    { id: 'data-model', label: 'Модель данных' },
+    { id: 'security', label: 'Безопасность' },
+    { id: 'modules', label: 'Модули' },
+    { id: 'workflows', label: 'Workflow n8n' },
+    { id: 'risks', label: 'Риски' },
+    { id: 'report', label: 'Итоговый отчет' }
+  ];
+
+  const matrixData = [
+    { requirement:'Локализация данных (Указ №60)', risk:'Высокий', control:'Инфраструктура только в РБ, проверка IP/DC, локации бэкапов', artifact:'Отчет о размещении, журнал копий' },
+    { requirement:'Согласия ПДн (Закон №99-З)', risk:'Высокий', control:'Реестр согласий, блок операций при отсутствии, API отзывов', artifact:'Логи статусов, акт анонимизации' },
+    { requirement:'Контракты и продления (ТК РБ, Декрет №29)', risk:'Высокий', control:'Минимум 1 год, лимит продлений, блокировка некорректных дат', artifact:'Протокол валидаций, подписанные приказы' },
+    { requirement:'ПУ-1/2/3 сроки и форматы', risk:'Средний', control:'Справочники кодов, валидация периодов, текстовые выгрузки', artifact:'Журнал выгрузок, ошибки проверки' },
+    { requirement:'Воинский учет', risk:'Средний', control:'Обязательные поля до приказа, SLA уведомлений, напоминания', artifact:'Логи отправок, отчет сверки' },
+    { requirement:'ИБ/ОАЦ: доступ и аудит', risk:'Высокий', control:'RLS, RBAC, MFA/ЭЦП, логирование чтения/изменения', artifact:'Audit trail, выгрузка в SIEM' },
+  ];
+
+  const modules = {
+    'Штатное расписание': {
+      purpose:'Первичная сущность FTE, контроль позиций и классификаторов',
+      rules:['Должности только из ЕКСД/ЕТКС/ОКРБ 014-2017','FTE \u2264 1; временная вакансия с датой окончания','Запрет приема на неактивную позицию'],
+      scenarios:['Создание позиции','Временная замена на период отпуска','Закрытие позиции'],
+      errors:['Пересечение периодов','Отсутствует код классификатора'],
+      audit:['Лог изменений FTE и кода должности','Версии позиций'],
+      tests:['Создание позиции с FTE>1 — отказ','Прием на закрытую позицию — блокировка','Поиск по классификатору — успешен','Временная вакансия с end_date — успешна']
+    },
+    'Кадры': {
+      purpose:'Прием/перевод/увольнение с юридическими документами',
+      rules:['Контракт \u2265 1 год; контроль суммарного срока','Приказ обязателен; пакетная генерация PDF','Интеграция со СКУД: order.signed → активация пропуска'],
+      scenarios:['Прием: заявление → договор → приказ → СКУД','Перевод с проверкой позиции','Увольнение с уведомлением сроков'],
+      errors:['Нет согласия ПДн','Просрочено уведомление','Некорректная дата приказа'],
+      audit:['Подписи, версии документов, журнал согласований'],
+      tests:['Продление после лимита — отказ','Прием без свободной ставки — ошибка','Пакетная печать приказов — успех','Событие в СКУД после подписи — успех']
+    },
+    'ФСЗН': {
+      purpose:'Формирование ПУ-1/2/3 и контроль кодов',
+      rules:['Валидация перед выгрузкой','Текстовые файлы в требуемом формате','Подготовка JSON+подпись для API'],
+      scenarios:['ПУ-1 при приеме','ПУ-2 при изменениях','ПУ-3 по итогам периода'],
+      errors:['Нет кода должности','Пересечение периодов','Файл без подписи'],
+      audit:['Журнал выгрузок: статус, хэш, ошибка'],
+      tests:['Генерация без кода — ошибка','Отправка без подписи — отказ','Разбиение ПУ-3 по отпуску/болезни — успех']
+    },
+    'Воинский учет': {
+      purpose:'Карточки и уведомления военкоматов',
+      rules:['Данные обязательны до приказа','SLA уведомлений, ежегодная сверка','Блокировка приказа без карточки'],
+      scenarios:['Прием с проверкой статуса','Увольнение с уведомлением','Плановая сверка'],
+      errors:['Просрочка SLA','Неполные данные'],
+      audit:['Логи отправок, список просрочек'],
+      tests:['Приказ без данных ВУР — отказ','Напоминание о сверке — успех','Фиксация отправки — успех']
+    },
+    'Табель': {
+      purpose:'Учёт времени и доказательная база сверхурочных',
+      rules:['Матрица сотрудник×день; коды табеля','Запрет явки в отпуске/больничном','Версионность производственного календаря'],
+      scenarios:['Ввод табеля с клавиатуры (как Excel/1С)','Пересчет нормы по учетному периоду','Выгрузка в бухгалтерию'],
+      errors:['Двойная явка/отпуск','Несогласованный календарь'],
+      audit:['Версии табеля; кто менял строки; протокол расчета'],
+      tests:['Явка в отпуск — ошибка','Смена календаря пересчитывает норму — успех','Протокол расчета содержит итог часов — успех']
+    }
+  };
+
+  const workflows = [
+    { name:'Контроль сроков контрактов', trigger:'daily', actions:'Поиск <60/30/10 дней → задача кадровику → проект уведомления', artifacts:'Журнал уведомлений', retry:'Повтор почты/SMS, лог подписи' },
+    { name:'ПУ-1 при изменении ФИО/документов', trigger:'employee.updated', actions:'Если поле из перечня → генерация ПУ-1 → подпись Avest', artifacts:'Лог отправки', retry:'Ретраи HTTP, идемпотентность по employee+version' },
+    { name:'Уведомления ВУР', trigger:'order.hire/terminate', actions:'Формирование уведомления → email/печать', artifacts:'Лог отправки, SLA таймер', retry:'Эскалация при SLA>5 дней' },
+    { name:'Расчетные листки (опционально)', trigger:'payroll.ready', actions:'Шифрование для сотрудника → доставка', artifacts:'Лог доставки', retry:'Повтор с бэкап-каналом' },
+    { name:'Анонимизация при отзыве согласия', trigger:'consent.revoked', actions:'Очистка ПДн → акт анонимизации', artifacts:'Запись в журнал', retry:'Наблюдение очереди outbox' },
+    { name:'Ежедневный отчет комплаенса', trigger:'cron 06:00', actions:'Ошибки справочников/табеля/уведомлений → email', artifacts:'Отчет в PDF/HTML', retry:'Повтор генерации, контроль доставки' },
+    { name:'Интеграция со СКУД', trigger:'order.signed', actions:'Webhook к СКУД → активация/блокировка', artifacts:'Лог событий', retry:'Ретраи с дедупликацией' },
+    { name:'Годовая сверка ВУР', trigger:'cron годовой', actions:'Список несверенных → задачи', artifacts:'Отчет сверки', retry:'Повтор с эскалацией' }
+  ];
+
+  const risks = [
+    { name:'Утечка ПДн', level:'high', impact:'Средняя/Высокий', detect:'SIEM, DLP', mitigation:'RLS, RBAC, шифрование, аудит доступа', owner:'ИБ' },
+    { name:'Просрочка уведомлений (ВУР/ФСЗН)', level:'medium', impact:'Средняя/Средний', detect:'Алерты n8n', mitigation:'SLA, задачи, эскалации', owner:'Кадры' },
+    { name:'Сопротивление пользователей', level:'high', impact:'Высокая/Средний', detect:'Опросы', mitigation:'UX как Excel, тренинги', owner:'Кадры/ИТ' },
+    { name:'Грязные исторические данные', level:'high', impact:'Высокая/Высокий', detect:'ETL отчеты', mitigation:'Data Quality dashboard, очистка', owner:'ИТ/Кадры' },
+    { name:'Изменения законодательства', level:'medium', impact:'Средняя/Высокий', detect:'Мониторинг ЛНПА', mitigation:'Правила как данные, конфигурация без redeploy', owner:'Комплаенс' }
+  ];
+
+  function buildNav() {
+    const nav = document.getElementById('side-nav');
+    nav.innerHTML = '<h3>Разделы</h3>' + navItems.map(i => `<a href="#${i.id}" data-id="${i.id}">${i.label}</a>`).join('');
+    nav.querySelectorAll('a').forEach(a => a.addEventListener('click', e => {
+      e.preventDefault();
+      document.getElementById(a.dataset.id).scrollIntoView({ behavior:'smooth' });
+    }));
+  }
+
+  function fillMatrix() {
+    const tbody = document.querySelector('#matrix-table tbody');
+    const term = document.getElementById('matrix-search').value.toLowerCase();
+    tbody.innerHTML = matrixData
+      .filter(r => !term || Object.values(r).some(v => v.toLowerCase().includes(term)))
+      .map(r => `<tr><td>${r.requirement}</td><td><span class="pill ${pillClass(r.risk)}">${r.risk}</span></td><td>${r.control}</td><td>${r.artifact}</td></tr>`)
+      .join('');
+  }
+
+  function pillClass(risk) {
+    if (risk === 'Высокий') return 'high';
+    if (risk === 'Средний') return 'medium';
+    return 'low';
+  }
+
+  function initModules() {
+    const select = document.getElementById('module-select');
+    select.innerHTML = Object.keys(modules).map(k => `<option value="${k}">${k}</option>`).join('');
+    select.addEventListener('change', renderModule);
+    renderModule();
+  }
+
+  function renderModule() {
+    const key = document.getElementById('module-select').value;
+    const m = modules[key];
+    const wrap = document.getElementById('module-detail');
+    wrap.innerHTML = `
+      <div class="grid">
+        <div class="card"><strong>Назначение</strong><p>${m.purpose}</p></div>
+        <div class="card"><strong>Бизнес-правила</strong><ul>${m.rules.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+        <div class="card"><strong>Сценарии</strong><ul>${m.scenarios.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+        <div class="card"><strong>Ошибки/исключения</strong><ul>${m.errors.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+        <div class="card"><strong>Аудит</strong><ul>${m.audit.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+      </div>
+    `;
+  }
+
+  function fillWorkflows() {
+    const tbody = document.querySelector('#workflow-table tbody');
+    tbody.innerHTML = workflows.map(w => `<tr><td>${w.name}</td><td>${w.trigger}</td><td>${w.actions}</td><td>${w.artifacts}</td><td>${w.retry}</td></tr>`).join('');
+  }
+
+  function fillRisks() {
+    const tbody = document.querySelector('#risk-table tbody');
+    const filter = document.getElementById('risk-filter').value;
+    tbody.innerHTML = risks
+      .filter(r => filter === 'all' || r.level === filter)
+      .map(r => `<tr><td>${r.name}</td><td><span class="pill ${r.level}">${r.impact}</span></td><td>${r.detect}</td><td>${r.mitigation}</td><td>${r.owner}</td></tr>`)
+      .join('');
+  }
+
+  function fillDashboard() {
+    document.getElementById('contracts-expiring').textContent = '12 контрактов (<=60 дней)';
+    document.getElementById('vur-overdue').textContent = '3 уведомления требуют эскалации';
+    document.getElementById('timesheet-conflicts').textContent = '5 конфликтов табеля устранить';
+  }
+
+  function openModal(type) {
+    const backdrop = document.getElementById('modal-backdrop');
+    const body = document.getElementById('modal-body');
+    backdrop.style.display = 'flex';
+    if (type === 'quickChecklist') {
+      body.innerHTML = `
+        <h3>Мини-чеклист комплаенса перед релизом</h3>
+        <ul>
+          <li>Все ресурсы размещены в РБ; акт проверки локаций</li>
+          <li>RLS включен, политики по филиалам применены</li>
+          <li>Аудит чтения/изменения ПДн активен и выгружается в SIEM</li>
+          <li>Справочники кодов ФСЗН и должностей актуализированы</li>
+          <li>Workflow n8n по контрактам, ВУР и ПУ активны; ретраи настроены</li>
+          <li>Ключи ЭЦП действительны; проверка OCSP/CRL</li>
+        </ul>
+        <button class="btn" onclick="closeModal()">Готово</button>`;
+    } else if (type === 'createOrder') {
+      body.innerHTML = `
+        <h3>Создать приказ</h3>
+        <div class="toolbar">
+          <select><option>Прием</option><option>Перевод</option><option>Увольнение</option></select>
+          <input type="date" aria-label="Дата приказа">
+          <input type="text" placeholder="Сотрудник" aria-label="Сотрудник">
+        </div>
+        <p class="muted">Контроль: проверка позиции, согласия ПДн, ВУР, конфликтов табеля.</p>
+        <button class="btn">Сформировать PDF</button>
+        <button class="btn secondary" onclick="closeModal()">Отмена</button>`;
+    } else if (type === 'moduleTests') {
+      const key = document.getElementById('module-select').value;
+      const tests = modules[key].tests.map(t => `<li>${t}</li>`).join('');
+      body.innerHTML = `<h3>Тест-кейсы: ${key}</h3><ol>${tests}</ol><button class="btn" onclick="closeModal()">Закрыть</button>`;
+    }
+  }
+
+  function closeModal(e) {
+    if (!e || e.target === document.getElementById('modal-backdrop')) {
+      document.getElementById('modal-backdrop').style.display = 'none';
+    }
+  }
+
+  function bindFilters() {
+    document.getElementById('matrix-search').addEventListener('input', fillMatrix);
+    document.getElementById('risk-filter').addEventListener('change', fillRisks);
+  }
+
+  function highlightNavOnScroll() {
+    const links = Array.from(document.querySelectorAll('#side-nav a'));
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          links.forEach(l => l.classList.toggle('active', l.dataset.id === entry.target.id));
+        }
+      });
+    }, { rootMargin:'-40% 0px -50% 0px', threshold:0.1 });
+    document.querySelectorAll('.section').forEach(sec => observer.observe(sec));
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    buildNav();
+    fillMatrix();
+    initModules();
+    fillWorkflows();
+    fillRisks();
+    fillDashboard();
+    bindFilters();
+    highlightNavOnScroll();
+  });
+</script>
+</body>
+</html>
