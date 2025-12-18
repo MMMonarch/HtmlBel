@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HRMS BY – Комплаенс UI прототип</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">HRMS BY</div>
+    <input id="global-search" class="search" placeholder="Поиск (Ctrl+K)">
+    <div class="top-actions">
+      <select id="role-select" aria-label="Роль">
+        <option value="HR">HR</option>
+        <option value="VUR">ВУР</option>
+        <option value="AUDITOR">Аудитор</option>
+        <option value="ADMIN">Админ</option>
+      </select>
+      <button id="create-btn" class="btn">Создать</button>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main" id="main"></main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+  <div id="command-palette" class="cmd-hidden">
+    <div class="cmd-box">
+      <input id="cmd-input" placeholder="Команды...">
+      <div id="cmd-actions"></div>
+    </div>
+  </div>
+
+  <script defer src="data.js"></script>
+  <script defer src="store.js"></script>
+  <script defer src="validators.js"></script>
+  <script defer src="ui.js"></script>
+  <script defer src="app.js"></script>
+</body>
+</html>
